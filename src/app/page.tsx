@@ -5,15 +5,19 @@ import Sidebar from '../components/Sidebar';
 import ProductTable from '../components/ProductTable';
 
 export default function Home() {
-  // 1. DATA (Start with empty array, fetch real data later)
+  // 1. DATA 
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true); // New: Loading state
+  const [loading, setLoading] = useState(true); 
 
   const [form, setForm] = useState({ name: "", price: "", category: "Electronics" });
-  const [editId, setEditId] = useState<string | null>(null); // changed to string for MongoDB _id
+  const [editId, setEditId] = useState<string | null>(null); 
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // New State for Image Upload
+  const [file, setFile] = useState<File | null>(null); 
+  const [uploading, setUploading] = useState(false);
 
-  // 2. FETCH DATA (THE NEW PART)
+  // 2. FETCH DATA
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -23,10 +27,9 @@ export default function Home() {
       const response = await fetch('/api/products');
       const data = await response.json();
       
-      // MongoDB returns '_id', but our table expects 'id'. Let's map it.
       const formattedData = data.map((item: any) => ({
         ...item,
-        id: item._id // Create a fake 'id' property that matches _id
+        id: item._id 
       }));
       
       setProducts(formattedData);
@@ -45,72 +48,75 @@ export default function Home() {
   const handleSave = async () => {
     if (!form.name || !form.price) return;
 
-    if (editId) {
-      try {
-        const response = await fetch(`/api/products/${editId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name,
-            price: parseFloat(form.price),
-            category: form.category
-          }),
-        });
+    setUploading(true);
+    let imageUrl = "";
 
-        if (response.ok) {
-          setEditId(null); // Exit edit mode
-          setForm({ name: "", price: "", category: "Electronics" }); // Clear form
-          fetchProducts(); // Refresh list to see changes
-        } else {
-          alert("Failed to update product");
-        }
-      } catch (error) {
-        console.error("Error updating product:", error);
-      }
-  
-    } else {
-      // --- ADD MODE (Connected to DB!) ---
-      try {
-        const response = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name,
-            price: parseFloat(form.price),
-            category: form.category
-          }),
-        });
+    // A. If there is a file, upload it first
+    if (file) {
+      const formData = new FormData();
+      formData.append("file", file);
 
-        if (response.ok) {
-          fetchProducts(); // Refresh the list from the server
-          setForm({ name: "", price: "", category: "Electronics" });
-        }
+      try {
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url; // Get the URL from Cloudinary
       } catch (error) {
-        console.error("Error saving product:", error);
+        console.error("Upload failed", error);
+        setUploading(false);
+        return;
       }
+    }
+
+    // B. Prepare the product data
+    const productData = {
+      name: form.name,
+      price: parseFloat(form.price),
+      category: form.category,
+      imageUrl: imageUrl || undefined, 
+    };
+
+    // C. Save to MongoDB 
+    try {
+      const method = editId ? 'PUT' : 'POST';
+      const url = editId ? `/api/products/${editId}` : '/api/products';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+
+      if (response.ok) {
+        setForm({ name: "", price: "", category: "Electronics" });
+        setFile(null); // Clear file input
+        setEditId(null);
+        fetchProducts();
+      }
+    } catch (error) {
+      console.error("Error saving product:", error);
+    } finally {
+      setUploading(false); 
     }
   };
 
-  // (We will update Delete to use API in the next lesson)
-  // 4. DELETE FUNCTION (Now connected to DB)
   const handleDeleteProduct = async (id: string | number) => {
-    // Optimistic Update: Remove it from UI immediately so it feels fast
     setProducts(products.filter((product) => product.id !== id));
 
     try {
-      // Send the command to the server
       const response = await fetch(`/api/products/${id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        // If server failed, revert the change (fetch the list again)
         alert("Failed to delete product from database");
         fetchProducts();
       }
     } catch (error) {
       console.error("Error deleting product:", error);
-      fetchProducts(); // Revert on error
+      fetchProducts(); 
     }
   };
 
@@ -132,21 +138,40 @@ export default function Home() {
         {/* ADD FORM */}
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h3>{editId ? "Edit Product" : "Add New Product"}</h3>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* Name */}
             <input type="text" name="name" placeholder="Product Name" value={form.name} onChange={handleInputChange} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            
+            {/* Price */}
             <input type="number" name="price" placeholder="Price" value={form.price} onChange={handleInputChange} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+            
+            {/* Category */}
             <select name="category" value={form.category} onChange={handleInputChange} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
               <option value="Electronics">Electronics</option>
               <option value="Stationery">Stationery</option>
               <option value="Kitchen">Kitchen</option>
             </select>
-            <button onClick={handleSave} style={{ padding: '8px 16px', backgroundColor: editId ? '#007bff' : '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              {editId ? "Update Product" : "Add Product"}
+
+            {/* --- FILE INPUT IS NOW HERE --- */}
+            <input 
+              type="file" 
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              style={{ padding: '8px' }}
+            />
+
+            {/* Button */}
+            <button onClick={handleSave} disabled={uploading} style={{ padding: '8px 16px', backgroundColor: editId ? '#007bff' : '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+              {uploading ? "Uploading..." : (editId ? "Update Product" : "Add Product")}
             </button>
+          
           </div>
         </div>
-         <SalesChart />
-        {/* SEARCH BAR */}
+
+        <SalesChart />
+        
+        {/* SEARCH BAR (Cleaned up) */}
         <div style={{ marginBottom: '15px' }}>
           <input 
             type="text"
