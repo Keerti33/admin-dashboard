@@ -1,5 +1,5 @@
 'use client';
-
+import SalesChart from '../components/SalesChart';
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import ProductTable from '../components/ProductTable';
@@ -145,7 +145,7 @@ export default function Home() {
             </button>
           </div>
         </div>
-
+         <SalesChart />
         {/* SEARCH BAR */}
         <div style={{ marginBottom: '15px' }}>
           <input 
