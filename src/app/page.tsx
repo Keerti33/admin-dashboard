@@ -1,53 +1,117 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import ProductTable from '../components/ProductTable'; // <--- Import the new table
+import ProductTable from '../components/ProductTable';
 
 export default function Home() {
-  // --- STATE & LOGIC (Kept here in the Parent) ---
-  const [products, setProducts] = useState([
-    { id: 1, name: "Wireless Mouse", price: 25.99, category: "Electronics" },
-    { id: 2, name: "Mechanical Keyboard", price: 120.50, category: "Electronics" },
-    { id: 3, name: "Notebook", price: 5.00, category: "Stationery" },
-    { id: 4, name: "Coffee Mug", price: 12.00, category: "Kitchen" },
-    { id: 5, name: "HDMI Cable", price: 15.00, category: "Electronics" },
-  ]);
+  // 1. DATA (Start with empty array, fetch real data later)
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true); // New: Loading state
 
   const [form, setForm] = useState({ name: "", price: "", category: "Electronics" });
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null); // changed to string for MongoDB _id
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 2. FETCH DATA (THE NEW PART)
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      
+      // MongoDB returns '_id', but our table expects 'id'. Let's map it.
+      const formattedData = data.map((item: any) => ({
+        ...item,
+        id: item._id // Create a fake 'id' property that matches _id
+      }));
+      
+      setProducts(formattedData);
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      setLoading(false);
+    }
+  };
+
+  // 3. HANDLERS
   const handleInputChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.price) return;
 
-    if (editId !== null) {
-      const updatedProducts = products.map((product) => 
-        product.id === editId 
-          ? { ...product, name: form.name, price: parseFloat(form.price), category: form.category }
-          : product
-      );
-      setProducts(updatedProducts);
-      setEditId(null);
+    if (editId) {
+      try {
+        const response = await fetch(`/api/products/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            price: parseFloat(form.price),
+            category: form.category
+          }),
+        });
+
+        if (response.ok) {
+          setEditId(null); // Exit edit mode
+          setForm({ name: "", price: "", category: "Electronics" }); // Clear form
+          fetchProducts(); // Refresh list to see changes
+        } else {
+          alert("Failed to update product");
+        }
+      } catch (error) {
+        console.error("Error updating product:", error);
+      }
+  
     } else {
-      const newProduct = {
-        id: Date.now(),
-        name: form.name,
-        price: parseFloat(form.price),
-        category: form.category
-      };
-      setProducts([...products, newProduct]);
+      // --- ADD MODE (Connected to DB!) ---
+      try {
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            price: parseFloat(form.price),
+            category: form.category
+          }),
+        });
+
+        if (response.ok) {
+          fetchProducts(); // Refresh the list from the server
+          setForm({ name: "", price: "", category: "Electronics" });
+        }
+      } catch (error) {
+        console.error("Error saving product:", error);
+      }
     }
-    setForm({ name: "", price: "", category: "Electronics" });
   };
 
-  const handleDeleteProduct = (id: number) => {
-    const updatedProducts = products.filter((product) => product.id !== id);
-    setProducts(updatedProducts);
+  // (We will update Delete to use API in the next lesson)
+  // 4. DELETE FUNCTION (Now connected to DB)
+  const handleDeleteProduct = async (id: string | number) => {
+    // Optimistic Update: Remove it from UI immediately so it feels fast
+    setProducts(products.filter((product) => product.id !== id));
+
+    try {
+      // Send the command to the server
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        // If server failed, revert the change (fetch the list again)
+        alert("Failed to delete product from database");
+        fetchProducts();
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      fetchProducts(); // Revert on error
+    }
   };
 
   const handleEditProduct = (product: any) => {
@@ -62,7 +126,6 @@ export default function Home() {
   return (
     <div className="dashboard-container">
       <Sidebar />
-
       <div className="main-content">
         <h1>Admin Dashboard</h1>
         
@@ -94,13 +157,16 @@ export default function Home() {
           />
         </div>
 
-        {/* THE NEW COMPONENT */}
-        {/* We pass our data and functions DOWN to the child here */}
-        <ProductTable 
-          products={filteredProducts} 
-          onEdit={handleEditProduct} 
-          onDelete={handleDeleteProduct} 
-        />
+        {/* TABLE */}
+        {loading ? (
+          <p>Loading products from database...</p>
+        ) : (
+          <ProductTable 
+            products={filteredProducts} 
+            onEdit={handleEditProduct} 
+            onDelete={handleDeleteProduct} 
+          />
+        )}
 
       </div>
     </div>
