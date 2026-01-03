@@ -1,17 +1,15 @@
-'use client'; // <--- Needed because we use a Hook (usePathname)
+'use client'; 
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // <--- Hook to get current URL
+import { usePathname } from 'next/navigation';
 
 const Sidebar = () => {
-  const pathname = usePathname(); // Example value: "/orders" or "/"
+  const pathname = usePathname(); 
 
-  // Helper function to assign classes based on active state
-  // We accept 'path' as the argument for the link we want to check
+
   const getLinkStyle = (path: string) => {
-    // Check if the current URL starts with the link path
-    // (e.g., if we are on /orders/101, the /orders link should still be active)
+
     const isActive = path === '/' ? pathname === '/' : pathname.startsWith(path);
 
     return {
@@ -21,9 +19,9 @@ const Sidebar = () => {
       fontSize: '18px',
       padding: '10px',
       borderRadius: '5px',
-      display: 'block', // Makes the whole clickable area nice
-      backgroundColor: isActive ? '#34495e' : 'transparent', // Darker background if active
-      borderLeft: isActive ? '4px solid #3498db' : '4px solid transparent', // Blue bar on left if active
+      display: 'block', 
+      backgroundColor: isActive ? '#34495e' : 'transparent', 
+      borderLeft: isActive ? '4px solid #3498db' : '4px solid transparent', 
       transition: 'all 0.3s ease'
     };
   };

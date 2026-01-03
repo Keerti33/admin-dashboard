@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation'; // <--- This hook reads the URL
+import { useParams } from 'next/navigation'; 
 import Link from 'next/link';
-import Sidebar from '../../../components/Sidebar'; // Note: We need to go up 3 levels now (../../..)
+import Sidebar from '../../../components/Sidebar'; 
 
 export default function OrderDetailsPage() {
-  const params = useParams(); // Get the ID from the URL (e.g., "101")
+  const params = useParams(); 
   const orderId = params.id;
 
   return (

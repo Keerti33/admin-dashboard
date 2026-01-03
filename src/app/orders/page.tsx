@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Sidebar from '../../components/Sidebar'; // We reuse our Sidebar!
 
 export default function OrdersPage() {
-  // Mock data for orders
+
   const orders = [
     { id: 101, customer: "Alice Johnson", total: 54.00, status: "Shipped" },
     { id: 102, customer: "Bob Smith", total: 12.50, status: "Processing" },
@@ -49,7 +49,7 @@ export default function OrdersPage() {
                   {/* NEW COLUMN FOR LINK */}
                   <td>
                     <Link 
-                      href={`/orders/${order.id}`} // This creates the dynamic URL
+                      href={`/orders/${order.id}`} 
                       style={{ color: '#007bff', textDecoration: 'none', fontWeight: 'bold' }}
                     >
                       View Details

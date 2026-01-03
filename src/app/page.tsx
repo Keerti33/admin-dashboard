@@ -1,11 +1,25 @@
 'use client';
+
+import { useRouter } from "next/navigation";
 import SalesChart from '../components/SalesChart';
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import ProductTable from '../components/ProductTable';
 
+
 export default function Home() {
-  // 1. DATA 
+  const router = useRouter();
+
+  useEffect(() => {
+  
+    const isAdmin = localStorage.getItem("isAdmin");
+    
+    if (!isAdmin) {
+      router.push("/login");
+    }
+  }, []);
+ 
+  
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true); 
 
@@ -13,11 +27,11 @@ export default function Home() {
   const [editId, setEditId] = useState<string | null>(null); 
   const [searchTerm, setSearchTerm] = useState("");
   
-  // New State for Image Upload
+ 
   const [file, setFile] = useState<File | null>(null); 
   const [uploading, setUploading] = useState(false);
 
-  // 2. FETCH DATA
+
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -40,7 +54,6 @@ export default function Home() {
     }
   };
 
-  // 3. HANDLERS
   const handleInputChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -51,7 +64,7 @@ export default function Home() {
     setUploading(true);
     let imageUrl = "";
 
-    // A. If there is a file, upload it first
+  
     if (file) {
       const formData = new FormData();
       formData.append("file", file);
@@ -62,7 +75,7 @@ export default function Home() {
           body: formData,
         });
         const uploadData = await uploadRes.json();
-        imageUrl = uploadData.url; // Get the URL from Cloudinary
+        imageUrl = uploadData.url; 
       } catch (error) {
         console.error("Upload failed", error);
         setUploading(false);
@@ -70,7 +83,7 @@ export default function Home() {
       }
     }
 
-    // B. Prepare the product data
+ 
     const productData = {
       name: form.name,
       price: parseFloat(form.price),
@@ -78,7 +91,7 @@ export default function Home() {
       imageUrl: imageUrl || undefined, 
     };
 
-    // C. Save to MongoDB 
+  
     try {
       const method = editId ? 'PUT' : 'POST';
       const url = editId ? `/api/products/${editId}` : '/api/products';
@@ -91,7 +104,7 @@ export default function Home() {
 
       if (response.ok) {
         setForm({ name: "", price: "", category: "Electronics" });
-        setFile(null); // Clear file input
+        setFile(null); 
         setEditId(null);
         fetchProducts();
       }

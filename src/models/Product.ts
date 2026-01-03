@@ -4,7 +4,7 @@ export interface IProduct extends Document {
   name: string;
   price: number;
   category: string;
-  imageUrl?: string; // <--- New Field (Optional)
+  imageUrl?: string; 
   createdAt: Date;
 }
 
@@ -23,10 +23,10 @@ const ProductSchema: Schema = new Schema({
     required: [true, 'Please specify a category'],
     enum: ['Electronics', 'Stationery', 'Kitchen'] 
   },
-  // --- NEW FIELD ---
+  
   imageUrl: {
     type: String,
-    required: false, // Optional for now
+    required: false, 
   },
   createdAt: { 
     type: Date, 

@@ -6,7 +6,6 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
-// Global cache to prevent multiple connections in development
 let cached = (global as any).mongoose;
 
 if (!cached) {
