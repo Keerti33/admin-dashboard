@@ -4,7 +4,7 @@
 A fully functional Server-Side Rendered (SSR) dashboard for managing e-commerce products. This application allows administrators to view, add, edit, and delete products in real-time.
 
 ## 🔗 Live Deployment
-**Live Link:** [INSERT YOUR VERCEL LINK HERE]
+**Live Link:** [https://admin-dashboard-xyz.vercel.app]
 
 ## 🛠️ Tech Stack
 * **Framework:** Next.js (App Router)
@@ -20,7 +20,7 @@ A fully functional Server-Side Rendered (SSR) dashboard for managing e-commerce 
 ## 🔑 Admin Access (Dummy Credentials)
 * **Username:** admin@example.com
 * **Password:** admin123
-*(Note: If you don't have login logic, just say "Open Access for Demo" or describe how to access the dashboard route, e.g., /admin)*
+
 
 ## ⚙️ Setup Locally
 1. Clone the repo: `git clone [https://github.com/Keerti33/admin-dashboard.git]`
