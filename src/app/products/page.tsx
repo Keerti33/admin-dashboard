@@ -1,107 +1,126 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ProductTable from '@/components/ProductTable';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); 
+  const [form, setForm] = useState({ name: "", price: "", category: "Electronics" });
+  const [editId, setEditId] = useState<string | null>(null); 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [file, setFile] = useState<File | null>(null); 
+  const [uploading, setUploading] = useState(false);
 
-
+ 
   useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const response = await fetch('/api/products');
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        console.error('Failed to fetch products:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchProducts();
   }, []);
 
-  if (loading) return <div className="p-8">Loading products...</div>;
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      
+      const formattedData = data.map((item: any) => ({ ...item, id: item._id }));
+      setProducts(formattedData);
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      setLoading(false);
+    }
+  };
+
+ 
+  const handleSave = async () => {
+    if (!form.name || !form.price) return;
+    setUploading(true);
+    let imageUrl = "";
+
+  
+    if (file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url; 
+      } catch (error) {
+        console.error("Upload failed", error);
+        setUploading(false); return;
+      }
+    }
+
+    const productData = {
+      name: form.name,
+      price: parseFloat(form.price),
+      category: form.category,
+      imageUrl: imageUrl || undefined, 
+    };
+
+    try {
+      const method = editId ? 'PUT' : 'POST';
+      const url = editId ? `/api/products/${editId}` : '/api/products';
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+
+      if (response.ok) {
+        setForm({ name: "", price: "", category: "Electronics" });
+        setFile(null); 
+        setEditId(null);
+        fetchProducts();
+      }
+    } catch (error) { console.error("Error saving:", error); } 
+    finally { setUploading(false); }
+  };
+
+ 
+  const handleDeleteProduct = async (id: string) => {
+    if(!confirm("Are you sure?")) return;
+    try {
+      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      fetchProducts();
+    } catch (error) { console.error("Error deleting:", error); }
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditId(product.id);
+    setForm({ name: product.name, price: product.price, category: product.category });
+  };
+
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      {/* Search Bar Section */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-gray-200">
-        <input 
-          type="text" 
-          placeholder="Search products..." 
-          className="w-full text-gray-600 outline-none"
-        />
+    <div>
+      <h1 style={{ marginBottom: '20px' }}>Product Management</h1>
+
+      {/* Add/Edit Form Section */}
+      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <h3>{editId ? "Edit Product" : "Add New Product"}</h3>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '15px' }}>
+          <input type="text" placeholder="Name" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+          <input type="number" placeholder="Price" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }} />
+          <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
+            <option>Electronics</option><option>Stationery</option><option>Kitchen</option>
+          </select>
+          <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ padding: '8px' }} />
+          <button onClick={handleSave} disabled={uploading} style={{ padding: '8px 16px', backgroundColor: editId ? '#f1c40f' : '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+            {uploading ? "Uploading..." : (editId ? "Update" : "Add")}
+          </button>
+        </div>
       </div>
 
-      {/* Table Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <table className="min-w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4 font-bold text-gray-900">Image</th>
-              <th className="px-6 py-4 font-bold text-gray-900">Name</th>
-              <th className="px-6 py-4 font-bold text-gray-900">Category</th>
-              <th className="px-6 py-4 font-bold text-gray-900">Price</th>
-              <th className="px-6 py-4 font-bold text-gray-900">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {products.map((product) => (
-              <tr key={product._id || product.id} className="hover:bg-gray-50">
-                {/* Image Column */}
-                <td className="px-6 py-4">
-                  {product.image ? (
-                    <img 
-                      src={product.image} 
-                      alt={product.name} 
-                      className="w-12 h-12 rounded object-cover border" 
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-[10px] text-gray-400 border">
-                      No Img
-                    </div>
-                  )}
-                </td>
-
-                {/* Name Column */}
-                <td className="px-6 py-4 text-gray-800 font-medium">
-                  {product.name || product.title}
-                </td>
-
-                {/* Category Column - Using a pill shape */}
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-full font-medium">
-                    {product.category || 'Electronics'} 
-                  </span>
-                </td>
-
-                {/* Price Column - Green and Bold */}
-                <td className="px-6 py-4 text-green-500 font-bold">
-                  ${product.price}
-                </td>
-
-                {/* Actions Column - Yellow Edit, Red Delete */}
-                <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    <button className="bg-amber-400 hover:bg-amber-500 text-white px-4 py-1.5 rounded font-semibold text-sm transition-colors">
-                      Edit
-                    </button>
-                    <button className="bg-crimson-600 bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded font-semibold text-sm transition-colors">
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {products.length === 0 && (
-          <div className="p-6 text-center text-gray-500">No products found.</div>
-        )}
-      </div>
+      {/* Search & Table */}
+      <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '4px' }} />
+      
+      {loading ? <p>Loading...</p> : (
+        <ProductTable products={filteredProducts} onEdit={handleEditProduct} onDelete={handleDeleteProduct} />
+      )}
     </div>
   );
 }
